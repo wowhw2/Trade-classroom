@@ -1,0 +1,55 @@
+// v0.3 PATCH SNIPPET
+// Apply these changes to the existing server.js.
+
+// 1) In newRoom(), add:
+// joinOpen:true,
+// nations,
+
+// 2) Add this Socket.IO handler inside io.on('connection', s => { ... }):
+s.on('teacherAction', d => {
+  const r=rooms[s.data.code];
+  if(!r || !s.data.teacher || r.phase!=='lobby') return;
+
+  if(d.type==='toggleJoin') r.joinOpen=!r.joinOpen;
+
+  if(d.type==='kick'){
+    const t=T(r,d.teamId);
+    if(!t) return;
+    r.teams=r.teams.filter(x=>x.id!==d.teamId);
+    r.posts=r.posts.filter(x=>x.teamId!==d.teamId);
+    r.contracts=r.contracts.filter(x=>x.from!==d.teamId && x.to!==d.teamId);
+    io.to(r.code).emit('teamRemoved',{teamId:d.teamId,name:t.name});
+  }
+
+  if(d.type==='setNation'){
+    const t=T(r,d.teamId);
+    if(!t) return;
+    const nation=d.nation||null;
+    if(nation && !nations.some(n=>n.id===nation)) return;
+    if(nation && r.teams.some(x=>x.id!==t.id && x.nation===nation))
+      return s.emit('msg','이미 다른 모둠에 배정된 나라입니다.');
+    t.nation=nation;
+  }
+
+  if(d.type==='randomAssign'){
+    if(r.teams.length>nations.length)
+      return s.emit('msg','나라 수보다 참가 모둠이 많습니다. 불필요한 모둠을 내보내 주세요.');
+    const shuffled=[...nations].sort(()=>Math.random()-.5);
+    r.teams.forEach((t,i)=>t.nation=shuffled[i].id);
+  }
+  emit(r);
+});
+
+// 3) In the student join logic, before creating a new team add:
+if(!r.joinOpen) return s.emit('joinDenied',{reason:'참가가 마감되었습니다. 선생님께 알려 주세요.'});
+
+// 4) Replace the old random-only teacher 'assign' action.
+// Keep start validation and add:
+if(a==='start'){
+  if(!r.teams.length) return s.emit('msg','참가한 모둠이 없습니다.');
+  if(r.teams.length>nations.length) return s.emit('msg','나라 수보다 참가 모둠이 많습니다.');
+  if(r.teams.some(t=>!t.nation)) return s.emit('msg','모든 모둠에 나라를 배정해 주세요.');
+  if(new Set(r.teams.map(t=>t.nation)).size!==r.teams.length)
+    return s.emit('msg','같은 나라가 중복 배정되어 있습니다.');
+  r.joinOpen=false; r.round=1; r.phase='intro';
+}

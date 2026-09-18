@@ -1,0 +1,10 @@
+
+/* v0.3 lobby additions */
+.row,.lobby-actions,.team-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.row{justify-content:space-between}
+.lobby-actions{margin:16px 0}
+.team-list{display:grid;gap:10px}
+.team-row{padding:12px 0;border-bottom:1px solid #ddd}
+.team-row strong{flex:1;min-width:150px}
+.team-row select{min-width:190px;font-size:16px;padding:10px}
+button.danger{background:#b42318;color:white}

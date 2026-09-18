@@ -1,0 +1,56 @@
+// v0.3 teacher.js additions/replacements
+const nationNames={
+ white:'⚪ 하얀 나라', brown:'🟤 갈색 나라', red:'🔴 빨간 나라',
+ black:'⚫ 검은 나라', blue:'🔵 파란 나라', yellow:'🟡 노란 나라'
+};
+
+function nationOptions(t){
+ const used=new Set(st.teams.filter(x=>x.id!==t.id&&x.nation).map(x=>x.nation));
+ return `<option value="">나라 선택</option>`+
+ Object.entries(nationNames).map(([id,n]) =>
+  `<option value="${id}" ${t.nation===id?'selected':''} ${used.has(id)?'disabled':''}>
+   ${n}${used.has(id)?' · 배정됨':''}</option>`).join('');
+}
+
+function lobbyTeams(){
+ return `<section class="card">
+ <div class="row"><h2>참가 모둠 ${st.teams.length} / 6</h2>
+ <span class="pill">${st.joinOpen?'🟢 참가 가능':'🔒 참가 마감'}</span></div>
+ <div class="lobby-actions">
+   <button id="random">🎲 무작위 배정</button>
+   <button id="toggleJoin" class="alt">${st.joinOpen?'🔒 참가 마감':'🔓 참가 다시 열기'}</button>
+ </div>
+ <div class="team-list">
+ ${st.teams.map(t=>`<div class="team-row">
+   <strong>${t.name}</strong>
+   <select class="nation-select" data-team="${t.id}">${nationOptions(t)}</select>
+   <button class="kick danger" data-team="${t.id}">내보내기</button>
+ </div>`).join('')}
+ </div>
+ <p class="muted">게임 시작 전까지 나라를 바꿀 수 있습니다. 한 나라는 한 모둠에만 배정됩니다.</p>
+ </section>`;
+}
+
+// In render(), when phase === 'lobby', append lobbyTeams().
+
+// Add to bind():
+document.querySelector('#random')?.addEventListener('click',
+ ()=>s.emit('teacherAction',{type:'randomAssign'}));
+document.querySelector('#toggleJoin')?.addEventListener('click',
+ ()=>s.emit('teacherAction',{type:'toggleJoin'}));
+document.querySelectorAll('.nation-select').forEach(el=>{
+ el.onchange=()=>s.emit('teacherAction',{
+   type:'setNation',teamId:el.dataset.team,nation:el.value||null
+ });
+});
+document.querySelectorAll('.kick').forEach(el=>{
+ el.onclick=()=>{
+  const t=st.teams.find(x=>x.id===el.dataset.team);
+  if(t && confirm(`「${t.name}」을 수업방에서 내보낼까요?`))
+   s.emit('teacherAction',{type:'kick',teamId:t.id});
+ };
+});
+
+// Lobby controls should now show only:
+// [게임 시작]
+// Random assignment is handled by the lobby button above.

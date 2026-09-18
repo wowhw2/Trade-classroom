@@ -1,0 +1,17 @@
+// v0.3 student.js additions
+s.on('teamRemoved',d=>{
+ if(d.teamId!==me) return;
+ localStorage.removeItem('trade_'+room);
+ me=null;
+ app.innerHTML=`<section class="card">
+   <h1>수업방에서 나왔어요</h1>
+   <p>잘못 접속했다면 다시 QR을 찍고 올바른 모둠 이름으로 참가하세요.</p>
+ </section>`;
+});
+
+s.on('joinDenied',d=>{
+ app.innerHTML=`<section class="card">
+   <h1>🔒 참가가 마감되었습니다</h1>
+   <p>${d.reason||'선생님께 알려 주세요.'}</p>
+ </section>`;
+});
