@@ -1,1 +1,16 @@
-{"name":"trade-classroom-app","version":"0.3.0","private":true,"scripts":{"start":"node server.js"},"dependencies":{"express":"^5.1.0","socket.io":"^4.8.1","qrcode":"^1.5.4"}}
+{
+  "name": "trade-classroom-app",
+  "version": "0.4.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "test:local": "node tests/e2e.mjs",
+    "test:deployed": "node tests/e2e.mjs"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1",
+    "qrcode": "^1.5.4",
+    "socket.io-client": "^4.8.1"
+  }
+}
