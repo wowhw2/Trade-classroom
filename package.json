@@ -1,6 +1,6 @@
 {
   "name": "trade-classroom-app",
-  "version": "0.5.0",
+  "version": "0.5.2",
   "private": true,
   "scripts": {
     "start": "node server.js",

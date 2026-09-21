@@ -11,7 +11,7 @@ const T=(r,id)=>r.teams.find(x=>x.id===id),N=id=>nations.find(x=>x.id===id),pub=
 function publicBase(req){if(process.env.PUBLIC_BASE_URL)return process.env.PUBLIC_BASE_URL.replace(/\/$/,'');return `${req.protocol}://${req.get('host')}`}
 function cleanPack(p={}){let o={cash:Math.max(0,Math.min(999,Math.floor(+p.cash||0)))};R.forEach(k=>o[k]=Math.max(0,Math.min(99,Math.floor(+p[k]||0))));return o}
 function nonEmpty(p){return (p.cash||0)>0||R.some(k=>(p[k]||0)>0)}
-app.get('/health',(req,res)=>res.json({ok:true,version:'0.5'}));
+app.get('/health',(req,res)=>res.json({ok:true,version:'0.5.2'}));
 app.get('/api/qr/:code',async(req,res)=>{let r=rooms[req.params.code];if(!r)return res.status(404).end();let url=`${publicBase(req)}/?room=${r.code}`;res.type('png');res.send(await QRCode.toBuffer(url,{width:800,margin:2,errorCorrectionLevel:'M'}))});
 app.get('/api/new-room',async(req,res)=>{let r=newRoom(),url=`${publicBase(req)}/?room=${r.code}`;res.json({code:r.code,token:r.token,url,qr:await QRCode.toDataURL(url,{width:800,margin:2})})});
 app.get('/api/new-simulation',async(req,res)=>{
