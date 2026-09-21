@@ -26,3 +26,5 @@
 @media(max-width:820px){
   .ipad-shell{width:100%;padding:7px;border-width:7px;border-radius:20px}
 }
+
+#previewHost{max-width:1100px;margin:auto;padding:0 18px 18px} @media(max-width:600px){#previewHost{padding:0 10px 10px}}
