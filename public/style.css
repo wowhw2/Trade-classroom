@@ -28,3 +28,7 @@
 }
 
 #previewHost{max-width:1100px;margin:auto;padding:0 18px 18px} @media(max-width:600px){#previewHost{padding:0 10px 10px}}
+
+.notice{border:2px solid #63b58a;background:#effaf4}
+.trade-item{padding:12px;margin:10px 0;border:1px solid #dfe4ec;border-radius:14px;background:#fafbfc}
+.own-post{border-style:dashed;background:#f6f8ff}
