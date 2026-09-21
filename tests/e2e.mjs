@@ -67,6 +67,25 @@ try{
     assert(!state.posts.find(p=>p.id===post.id)?.active,'게시물이 삭제되지 않음');
   });
 
+  await test('board negotiation lock cancel reopen',async()=>{
+    const blue=students[4],yellow=students[5],red=students[2];
+    state=await emitState(blue.c,'post',{offer:{textile:1},want:{tech:1}},x=>x.posts.some(p=>p.teamId===blue.id&&p.active&&!p.lockedBy));
+    const p=state.posts.find(p=>p.teamId===blue.id&&p.active&&!p.lockedBy);
+    state=await emitState(yellow.c,'take',{id:p.id},x=>x.posts.find(z=>z.id===p.id)?.lockedBy);
+    const first=state.contracts.find(c=>c.postId===p.id&&c.status==='pending');
+    assert(first&&state.posts.find(z=>z.id===p.id).status==='negotiating','협의중 잠금 실패');
+    const blocked=once(red.c,'msg',m=>String(m).includes('협의 중'));
+    red.c.emit('take',{id:p.id}); await blocked;
+    assert(state.contracts.filter(c=>c.postId===p.id&&c.status==='pending').length===1,'동시 신청 허용됨');
+    state=await emitState(yellow.c,'cancelBoardContract',{id:first.id},x=>x.posts.find(z=>z.id===p.id)?.status==='open'&&!x.posts.find(z=>z.id===p.id)?.lockedBy);
+    assert(state.contracts.find(c=>c.id===first.id)?.status==='cancelled','신청 취소 실패');
+    state=await emitState(red.c,'take',{id:p.id},x=>x.posts.find(z=>z.id===p.id)?.lockedBy);
+    const second=state.contracts.find(c=>c.postId===p.id&&c.status==='pending');
+    state=await emitState(blue.c,'answer',{id:second.id,ok:false},x=>x.posts.find(z=>z.id===p.id)?.status==='open'&&!x.posts.find(z=>z.id===p.id)?.lockedBy);
+    assert(state.contracts.find(c=>c.id===second.id)?.status==='rejected','거절 처리 실패');
+    state=await emitState(blue.c,'deletePost',{id:p.id},x=>x.posts.find(z=>z.id===p.id)?.active===false);
+  });
+
   await test('board trade',async()=>{
     const blue=students[4],yellow=students[5];
     state=await emitState(blue.c,'post',{offer:{textile:2},want:{tech:1}},x=>x.posts.some(p=>p.teamId===blue.id&&p.active));

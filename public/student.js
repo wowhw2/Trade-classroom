@@ -63,13 +63,13 @@ function trade(t){
  <button id=send>📨 계약서 보내기</button></section>`;
 
  if(outgoing.length)app.innerHTML+=`<section class=card><h2>📤 보낸 계약서</h2>
- ${outgoing.map(c=>{let b=st.teams.find(x=>x.id===c.to);return `<div class=trade-item><b>${ND[b.nation][0]} · ${b.name}</b><br>우리가 주기: ${pack(c.offer)}<br>우리가 받기: ${pack(c.want)}<br><span class=muted>⏳ 상대 모둠의 확인을 기다리고 있어요.</span></div>`}).join('')}</section>`;
+ ${outgoing.map(c=>{let b=st.teams.find(x=>x.id===c.to);return `<div class=trade-item><b>${ND[b.nation][0]} · ${b.name}</b><br>우리가 주기: ${pack(c.offer)}<br>우리가 받기: ${pack(c.want)}<br><span class=muted>⏳ 상대 모둠의 확인을 기다리고 있어요.</span>${c.source==='board'?`<br><button class=cancel-board data-id=${c.id}>↩️ 거래 신청 취소</button>`:''}</div>`}).join('')}</section>`;
 
  app.innerHTML+=`<section class=card><h2>📢 거래 게시판</h2>
  <p class=muted>직접 협상이 어렵다면 원하는 거래를 게시판에 올릴 수 있어요.</p>
- ${ownPosts.length?`<h3>📌 내가 올린 거래</h3>${ownPosts.map(p=>`<div class="trade-item own-post"><div class="row"><b>게시 중</b><button class="delete-post danger small-btn" data-id="${p.id}">🗑️ 삭제</button></div><br>${pack(p.offer)} ↔ ${pack(p.want)}<br><span class=muted>다른 모둠의 신청을 기다리고 있어요.</span></div>`).join('')}`:''}
+ ${ownPosts.length?`<h3>📌 내가 올린 거래</h3>${ownPosts.map(p=>`<div class="trade-item own-post"><div class="row"><b>${p.lockedBy?'🔒 거래 협의 중':'🟢 거래 가능'}</b><button class="delete-post danger small-btn" data-id="${p.id}">🗑️ 삭제</button></div><br>${pack(p.offer)} ↔ ${pack(p.want)}<br><span class=muted>${p.lockedBy?'한 모둠의 신청을 확인하고 있어요. 거절/취소하면 다시 게시됩니다.':'다른 모둠의 신청을 기다리고 있어요.'}</span></div>`).join('')}`:''}
  <h3>다른 나라의 거래</h3>
- ${otherPosts.map(p=>{let a=st.teams.find(x=>x.id===p.teamId);return `<div class=trade-item><b>${ND[a.nation][0]} · ${a.name}</b><br>${pack(p.offer)} ↔ ${pack(p.want)} <button class=take data-id=${p.id}>거래 신청</button></div>`}).join('')||'<p>아직 다른 나라가 올린 거래가 없어요.</p>'}
+ ${otherPosts.map(p=>{let a=st.teams.find(x=>x.id===p.teamId);return `<div class="trade-item ${p.lockedBy?'locked-post':''}"><b>${ND[a.nation][0]} · ${a.name}</b><br>${pack(p.offer)} ↔ ${pack(p.want)}<br>${p.lockedBy?'<span class="muted">🔒 다른 모둠과 거래 협의 중입니다.</span>':`<button class=take data-id=${p.id}>거래 신청</button>`}</div>`}).join('')||'<p>아직 다른 나라가 올린 거래가 없어요.</p>'}
  <details><summary><b>➕ 내 거래 올리기</b></summary><h3>내가 줄 것</h3>${inputs('pg','own',t)}<h3>받고 싶은 것</h3><p class=muted>상대 나라 재고는 확인하지 않습니다.</p>${inputs('pw','request',t)}<button id=post>📢 게시하기</button></details>
  </section>`;
 
@@ -81,7 +81,7 @@ function trade(t){
    <p class=big>${ND[a.nation][0]} · ${a.name}</p>
    <div class="modal-exchange"><div><span>내가 주는 것</span><strong>${pack(c.want)}</strong></div><div class=swap>⇅</div><div><span>내가 받는 것</span><strong>${pack(c.offer)}</strong></div></div>
    ${canGive?'<p class="good"><b>거래 조건을 확인해 주세요.</b></p>':'<p class="warn"><b>⚠️ 내가 줄 자원 또는 화폐가 부족합니다.</b><br>현재 상태에서는 이 거래를 수락할 수 없습니다.</p>'}
-   <div class="modal-actions"><button class="no alt" data-id="${c.id}">❌ 거절</button><button class="yes" data-id="${c.id}" ${canGive?'':'disabled'}>🤝 거래하기</button></div>
+   <div class="modal-actions"><button class="no alt" data-id="${c.id}">${c.source==='board'?'↩️ 신청 거절 · 게시물 다시 열기':'❌ 거절'}</button><button class="yes" data-id="${c.id}" ${canGive?'':'disabled'}>🤝 거래하기</button></div>
   </div></div>`;
  }
 
@@ -90,6 +90,7 @@ function trade(t){
  document.querySelector('#post').onclick=()=>s.emit('post',{offer:values('pg'),want:values('pw')});
  document.querySelectorAll('.take').forEach(b=>b.onclick=()=>s.emit('take',{id:b.dataset.id}));
  document.querySelectorAll('.delete-post').forEach(b=>b.onclick=()=>{if(confirm('이 거래 게시물을 삭제할까요?'))s.emit('deletePost',{id:b.dataset.id})});
+ document.querySelectorAll('.cancel-board').forEach(b=>b.onclick=()=>{if(confirm('거래 신청을 취소할까요? 게시물은 다시 거래 가능 상태가 됩니다.'))s.emit('cancelBoardContract',{id:b.dataset.id})});
  document.querySelectorAll('.yes').forEach(b=>b.onclick=()=>s.emit('answer',{id:b.dataset.id,ok:true}));
  document.querySelectorAll('.no').forEach(b=>b.onclick=()=>s.emit('answer',{id:b.dataset.id,ok:false}));
 }
