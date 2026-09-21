@@ -45,3 +45,5 @@
 .modal-exchange span{color:#687386}.modal-exchange strong{font-size:1.2rem}.swap{font-size:2rem;font-weight:900}
 .modal-actions{display:grid;grid-template-columns:1fr 1.4fr;gap:12px;margin-top:20px}.modal-actions button{min-height:62px;font-size:1.15rem}
 @media(max-width:600px){.qty-row{grid-template-columns:1fr 46px 68px 46px}.qty-label{grid-column:1/-1}.modal-exchange{grid-template-columns:1fr}.swap{transform:rotate(0deg)}.trade-modal{padding:20px}}
+
+.small-btn{min-height:38px;padding:6px 10px;font-size:.92rem}

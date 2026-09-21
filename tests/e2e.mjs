@@ -59,6 +59,14 @@ try{
     assert(team(state,black.id).cash===22&&team(state,black.id).inv.oil===11,'black 화폐거래 오류');
   });
 
+  await test('board post owner delete',async()=>{
+    const blue=students[4];
+    state=await emitState(blue.c,'post',{offer:{textile:1},want:{tech:1}},x=>x.posts.some(p=>p.teamId===blue.id&&p.active&&p.offer.textile===1));
+    const post=state.posts.find(p=>p.teamId===blue.id&&p.active&&p.offer.textile===1);
+    state=await emitState(blue.c,'deletePost',{id:post.id},x=>x.posts.find(p=>p.id===post.id)?.active===false);
+    assert(!state.posts.find(p=>p.id===post.id)?.active,'게시물이 삭제되지 않음');
+  });
+
   await test('board trade',async()=>{
     const blue=students[4],yellow=students[5];
     state=await emitState(blue.c,'post',{offer:{textile:2},want:{tech:1}},x=>x.posts.some(p=>p.teamId===blue.id&&p.active));
@@ -70,7 +78,11 @@ try{
     assert(team(state,yellow.id).inv.textile===2,'yellow textile 미수령');
   });
 
+  state=await emitState(students[4].c,'post',{offer:{textile:1},want:{tech:1}},x=>x.posts.some(p=>p.teamId===students[4].id&&p.active));
+  const cleanupPost=state.posts.find(p=>p.teamId===students[4].id&&p.active);
+  state=await emitState(students[5].c,'take',{id:cleanupPost.id},x=>x.contracts.some(c=>c.postId===cleanupPost.id&&c.status==='pending'));
   state=await emitState(teacher,'teacher','consume',x=>x.phase==='results');
+  await test('trade board cleared at consume',async()=>{assert(state.posts.length===0,`posts remain=${state.posts.length}`);assert(!state.contracts.some(c=>c.status==='pending'),'pending contract remains')});
   await test('consume/reward/stock cap',async()=>{for(const t of state.teams){assert(t.last,'last 없음');assert(t.last.reward>=0,'음수 보상');for(const v of Object.values(t.inv))assert(v<=5,'재고 상한 초과')}});
 
   // Advance to round 3 build, then construct road for first team.

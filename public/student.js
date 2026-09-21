@@ -67,7 +67,7 @@ function trade(t){
 
  app.innerHTML+=`<section class=card><h2>📢 거래 게시판</h2>
  <p class=muted>직접 협상이 어렵다면 원하는 거래를 게시판에 올릴 수 있어요.</p>
- ${ownPosts.length?`<h3>📌 내가 올린 거래</h3>${ownPosts.map(p=>`<div class="trade-item own-post"><b>게시 중</b><br>${pack(p.offer)} ↔ ${pack(p.want)}<br><span class=muted>다른 모둠의 신청을 기다리고 있어요.</span></div>`).join('')}`:''}
+ ${ownPosts.length?`<h3>📌 내가 올린 거래</h3>${ownPosts.map(p=>`<div class="trade-item own-post"><div class="row"><b>게시 중</b><button class="delete-post danger small-btn" data-id="${p.id}">🗑️ 삭제</button></div><br>${pack(p.offer)} ↔ ${pack(p.want)}<br><span class=muted>다른 모둠의 신청을 기다리고 있어요.</span></div>`).join('')}`:''}
  <h3>다른 나라의 거래</h3>
  ${otherPosts.map(p=>{let a=st.teams.find(x=>x.id===p.teamId);return `<div class=trade-item><b>${ND[a.nation][0]} · ${a.name}</b><br>${pack(p.offer)} ↔ ${pack(p.want)} <button class=take data-id=${p.id}>거래 신청</button></div>`}).join('')||'<p>아직 다른 나라가 올린 거래가 없어요.</p>'}
  <details><summary><b>➕ 내 거래 올리기</b></summary><h3>내가 줄 것</h3>${inputs('pg','own',t)}<h3>받고 싶은 것</h3><p class=muted>상대 나라 재고는 확인하지 않습니다.</p>${inputs('pw','request',t)}<button id=post>📢 게시하기</button></details>
@@ -89,6 +89,7 @@ function trade(t){
  document.querySelector('#send').onclick=()=>s.emit('contract',{to:document.querySelector('#to').value,offer:values('give'),want:values('want')});
  document.querySelector('#post').onclick=()=>s.emit('post',{offer:values('pg'),want:values('pw')});
  document.querySelectorAll('.take').forEach(b=>b.onclick=()=>s.emit('take',{id:b.dataset.id}));
+ document.querySelectorAll('.delete-post').forEach(b=>b.onclick=()=>{if(confirm('이 거래 게시물을 삭제할까요?'))s.emit('deletePost',{id:b.dataset.id})});
  document.querySelectorAll('.yes').forEach(b=>b.onclick=()=>s.emit('answer',{id:b.dataset.id,ok:true}));
  document.querySelectorAll('.no').forEach(b=>b.onclick=()=>s.emit('answer',{id:b.dataset.id,ok:false}));
 }
