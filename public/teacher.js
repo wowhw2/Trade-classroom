@@ -30,25 +30,27 @@ function showPreview(teamId){
  renderPreview();
 }
 function renderPreview(){
- document.querySelector('#previewPanel')?.remove();
  if(!previewTeamId||!st?.simulation)return;
  const team=st.teams.find(x=>x.id===previewTeamId);
- if(!team){previewTeamId=null;return}
- const panel=document.createElement('section');
+ if(!team){previewTeamId=null;document.querySelector('#previewPanel')?.remove();return}
+ let panel=document.querySelector('#previewPanel');
+ if(panel){
+   const label=panel.querySelector('[data-preview-label]');
+   if(label)label.textContent=`${name(team.nation)} · ${team.name}`;
+   return;
+ }
+ panel=document.createElement('section');
  panel.id='previewPanel';
  panel.className='card preview-panel';
  panel.innerHTML=`<div class="row preview-head">
-   <div><h2>📱 학생 iPad 화면 미리보기</h2><p class="muted">${name(team.nation)} · ${team.name}</p></div>
+   <div><h2>📱 학생 iPad 화면 미리보기</h2><p class="muted" data-preview-label>${name(team.nation)} · ${team.name}</p></div>
    <button id="closePreview" class="alt">미리보기 닫기</button>
  </div>
  <p class="muted">실제 iPad 화면 비율(4:3)을 기준으로 표시합니다. 아래 화면은 독립적으로 스크롤할 수 있습니다.</p>
- <div class="ipad-stage">
-   <div class="ipad-shell">
-     <iframe title="학생 iPad 화면" src="/?room=${encodeURIComponent(st.code)}&previewTeam=${encodeURIComponent(team.id)}"></iframe>
-   </div>
- </div>`;
+ <div class="ipad-stage"><div class="ipad-shell">
+   <iframe title="학생 iPad 화면" src="/?room=${encodeURIComponent(st.code)}&previewTeam=${encodeURIComponent(team.id)}"></iframe>
+ </div></div>`;
  app.appendChild(panel);
  document.querySelector('#closePreview').onclick=()=>{previewTeamId=null;panel.remove()};
 }
-
-function render(){if(!st)return;app.innerHTML=`<section class=card><h1>🌏 무역놀이 · ROUND ${st.round}</h1><p>현재 단계 <b>${phase(st.phase)}</b> · 방 번호 <b>${st.code}</b></p>${st.phase==='lobby'?`<img class=qr src="/api/qr/${st.code}" alt="학생 접속 QR"><p class=big>iPad 카메라로 QR을 찍으세요.</p>`:''}<div>${controls()}</div></section>${st.phase==='lobby'?lobby():''}${summary()}${simulationTools()}`;bind();renderPreview()}
+function render(){if(!st)return;const livePreview=document.querySelector('#previewPanel');if(livePreview)livePreview.remove();app.innerHTML=`<section class=card><h1>🌏 무역놀이 · ROUND ${st.round}</h1><p>현재 단계 <b>${phase(st.phase)}</b> · 방 번호 <b>${st.code}</b></p>${st.phase==='lobby'?`<img class=qr src="/api/qr/${st.code}" alt="학생 접속 QR"><p class=big>iPad 카메라로 QR을 찍으세요.</p>`:''}<div>${controls()}</div></section>${st.phase==='lobby'?lobby():''}${summary()}${simulationTools()}`;bind();if(livePreview&&previewTeamId)app.appendChild(livePreview);renderPreview()}
