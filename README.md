@@ -18,3 +18,6 @@ Render Auto-Deploy가 켜진 경우 기존 https://trade-classroom.onrender.com 
 교사용: /teacher.html
 학생용: / (교사용 QR로 접속 권장)
 건강 확인: /health → version 0.3
+
+## v0.5 수업 시뮬레이션
+교사용 화면의 `🧪 수업 테스트 시작`으로 6개 가상 모둠을 즉시 만들고, PC 한 대에서 각 학생 iPad 화면을 미리볼 수 있습니다. 게임 설명/무역/소비 결과/3R 건설 설명/건설/최종 결과로 바로 이동하는 UI 검토용 프리셋도 제공합니다. 시뮬레이션 방은 실제 수업방과 분리됩니다.

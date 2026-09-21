@@ -11,13 +11,31 @@ const T=(r,id)=>r.teams.find(x=>x.id===id),N=id=>nations.find(x=>x.id===id),pub=
 function publicBase(req){if(process.env.PUBLIC_BASE_URL)return process.env.PUBLIC_BASE_URL.replace(/\/$/,'');return `${req.protocol}://${req.get('host')}`}
 function cleanPack(p={}){let o={cash:Math.max(0,Math.min(999,Math.floor(+p.cash||0)))};R.forEach(k=>o[k]=Math.max(0,Math.min(99,Math.floor(+p[k]||0))));return o}
 function nonEmpty(p){return (p.cash||0)>0||R.some(k=>(p[k]||0)>0)}
-app.get('/health',(req,res)=>res.json({ok:true,version:'0.4'}));
+app.get('/health',(req,res)=>res.json({ok:true,version:'0.5'}));
 app.get('/api/qr/:code',async(req,res)=>{let r=rooms[req.params.code];if(!r)return res.status(404).end();let url=`${publicBase(req)}/?room=${r.code}`;res.type('png');res.send(await QRCode.toBuffer(url,{width:800,margin:2,errorCorrectionLevel:'M'}))});
 app.get('/api/new-room',async(req,res)=>{let r=newRoom(),url=`${publicBase(req)}/?room=${r.code}`;res.json({code:r.code,token:r.token,url,qr:await QRCode.toDataURL(url,{width:800,margin:2})})});
+app.get('/api/new-simulation',async(req,res)=>{
+ let r=newRoom(); r.simulation=true; r.joinOpen=false;
+ r.teams=nations.map((n,i)=>({id:'sim'+(i+1),name:`테스트 ${i+1}모둠`,nation:n.id,cash:r.settings.initialCash,inv:Object.fromEntries(R.map(k=>[k,0])),buildings:[],stats:{trades:0,waste:0,full:0},last:null}));
+ let url=`${publicBase(req)}/teacher.html?room=${r.code}&token=${r.token}`;
+ res.json({code:r.code,token:r.token,url});
+});
 setInterval(()=>{let cutoff=Date.now()-12*60*60*1000;Object.keys(rooms).forEach(k=>{if(rooms[k].createdAt<cutoff)delete rooms[k]})},3600000).unref();
 io.on('connection',s=>{
  s.on('join',d=>{let r=rooms[String(d.code||'')];if(!r)return s.emit('msg','방을 찾을 수 없습니다. QR을 다시 확인해 주세요.');s.join(r.code);s.data.code=r.code;if(d.token===r.token){s.data.teacher=true;return emit(r)}let t=d.teamId&&T(r,d.teamId);if(!t){if(r.phase!=='lobby'||!r.joinOpen)return s.emit('joinDenied',{reason:'참가가 마감되었습니다. 선생님께 알려 주세요.'});let name=String(d.name||'').trim().slice(0,20);if(!name)return s.emit('msg','모둠 이름을 입력해 주세요.');t={id:Math.random().toString(36).slice(2),name,nation:null,cash:r.settings.initialCash,inv:Object.fromEntries(R.map(k=>[k,0])),buildings:[],stats:{trades:0,waste:0,full:0},last:null};r.teams.push(t)}s.data.teamId=t.id;s.emit('joined',t.id);emit(r)});
  s.on('teacherAction',d=>{let r=rooms[s.data.code];if(!r||!s.data.teacher||r.phase!=='lobby')return;if(d.type==='toggleJoin')r.joinOpen=!r.joinOpen;if(d.type==='kick'){let t=T(r,d.teamId);if(t){r.teams=r.teams.filter(x=>x.id!==t.id);r.posts=r.posts.filter(x=>x.teamId!==t.id);r.contracts=r.contracts.filter(x=>x.from!==t.id&&x.to!==t.id);io.to(r.code).emit('teamRemoved',{teamId:t.id,name:t.name})}}if(d.type==='setNation'){let t=T(r,d.teamId),nation=d.nation||null;if(t&&(!nation||nations.some(n=>n.id===nation))){if(nation&&r.teams.some(x=>x.id!==t.id&&x.nation===nation))return s.emit('msg','이미 다른 모둠에 배정된 나라입니다.');t.nation=nation}}if(d.type==='randomAssign'){if(r.teams.length>nations.length)return s.emit('msg','나라 수보다 참가 모둠이 많습니다. 불필요한 모둠을 내보내 주세요.');let pool=[...nations];for(let i=pool.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}r.teams.forEach((t,i)=>t.nation=pool[i].id)}emit(r)});
+ s.on('simPreset',stage=>{
+  let r=rooms[s.data.code]; if(!r||!s.data.teacher||!r.simulation)return;
+  const reset=()=>r.teams.forEach((t,i)=>{t.cash=30;t.inv=Object.fromEntries(R.map(k=>[k,0]));t.buildings=[];t.stats={trades:2+i%3,waste:i,full:1};t.last=null;t.lastProduction=null});
+  reset();
+  if(stage==='intro'){r.round=1;r.phase='intro'}
+  if(stage==='trade'){r.round=1;r.phase='trade';r.teams.forEach(t=>{t.inv[N(t.nation).special]=12})}
+  if(stage==='results'){r.round=2;r.phase='results';r.teams.forEach((t,i)=>{R.forEach(k=>t.inv[k]=Math.min(5,(i+R.indexOf(k))%6));t.last={miss:i%3,reward:10-(i%3),waste:i%2,before:{...t.inv},used:{},wasted:{},after:{...t.inv},cashBefore:20,cashAfter:30-(i%3),rewardBonus:0};t.cash=t.last.cashAfter})}
+  if(stage==='buildIntro'){r.round=3;r.phase='buildIntro'}
+  if(stage==='build'){r.round=3;r.phase='build';r.teams.forEach((t,i)=>{t.cash=35+i})}
+  if(stage==='final'){r.round=6;r.phase='final';r.teams.forEach((t,i)=>{t.cash=32+i*2;t.buildings=[{...facilities[i%facilities.length],builtRound:3},{...facilities[(i+3)%facilities.length],builtRound:4}];t.stats={trades:8+i,waste:i*2,full:3+i%3}})}
+  emit(r);
+ });
  s.on('teacher',a=>{let r=rooms[s.data.code];if(!r||!s.data.teacher)return;if(a==='start'){if(!r.teams.length)return s.emit('msg','참가한 모둠이 없습니다.');if(r.teams.length>nations.length)return s.emit('msg','나라 수보다 참가 모둠이 많습니다.');if(r.teams.some(t=>!t.nation))return s.emit('msg','모든 모둠에 나라를 배정해 주세요.');if(new Set(r.teams.map(t=>t.nation)).size!==r.teams.length)return s.emit('msg','같은 나라가 중복 배정되어 있습니다.');r.joinOpen=false;r.round=1;r.phase='intro'}
  if(a==='produce'&&(r.phase==='intro'||r.phase==='ready'||r.phase==='buildIntro')){r.phase='trade';r.posts=[];r.contracts=r.contracts.filter(c=>c.status==='done');r.teams.forEach(t=>{let b=t.buildings.filter(x=>x.type==='production').reduce((z,x)=>z+x.value,0),qty=r.settings.baseProduction+b;t.inv[N(t.nation).special]+=qty;t.lastProduction={qty,bonus:b}})}
  if(a==='consume'&&r.phase==='trade'){r.phase='results';r.posts.forEach(p=>p.active=false);r.contracts.filter(c=>c.status==='pending').forEach(c=>c.status='expired');r.teams.forEach(t=>{let before={...t.inv},miss=0,n=N(t.nation),used={};R.forEach(k=>{let u=Math.min(t.inv[k],n.need[k]);used[k]=u;miss+=n.need[k]-u;t.inv[k]-=u});let b=t.buildings.filter(x=>x.type==='reward').reduce((z,x)=>z+x.value,0),reward=Math.max(0,r.settings.baseReward+b-r.settings.shortagePenalty*miss),cashBefore=t.cash;t.cash+=reward;if(!miss)t.stats.full++;let waste=0,wasted={};R.forEach(k=>{wasted[k]=Math.max(0,t.inv[k]-r.settings.stockCap);waste+=wasted[k];t.inv[k]=Math.min(t.inv[k],r.settings.stockCap)});t.stats.waste+=waste;t.last={miss,reward,waste,before,used,wasted,after:{...t.inv},cashBefore,cashAfter:t.cash,rewardBonus:b}})}
