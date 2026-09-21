@@ -1,0 +1,57 @@
+name: Trade Classroom E2E
+
+on:
+  push:
+    branches: [ main ]
+
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Optional deployed URL, e.g. https://trade-classroom.onrender.com'
+        required: false
+        default: ''
+
+jobs:
+  local-e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm install
+
+      - run: npm start > server.log 2>&1 &
+
+      - run: |
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:3000/health && break
+            sleep 1
+          done
+
+      - run: npm run test:local
+
+      - if: always()
+        run: cat server.log || true
+
+  deployed-e2e:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.base_url != '' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm install
+
+      - env:
+          BASE_URL: ${{ inputs.base_url }}
+        run: npm run test:deployed
