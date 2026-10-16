@@ -48,3 +48,24 @@
 
 .small-btn{min-height:38px;padding:6px 10px;font-size:.92rem}
 .locked-post{opacity:.7;background:#eef1f5}.cancel-board{background:#fff;color:#1b2a44;border:1px solid #9aa6b5;margin-top:10px}
+
+
+/* v0.6.3 interaction + asset UI */
+html,body{touch-action:manipulation;-webkit-text-size-adjust:100%}
+button,input,select,summary,label,.pill,.card{touch-action:manipulation}
+.team-need-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.team-name{font-weight:800;color:#5f6b7a}
+.need-inline{display:flex;align-items:center;gap:7px;flex-wrap:wrap;background:#f7f9fc;border:1px solid #e1e7ef;border-radius:999px;padding:6px 10px;font-size:.92rem}
+.need-inline>span{white-space:nowrap}
+.asset-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.stat-card{background:#f6f8fb;border:1px solid #e0e6ef;border-radius:16px;padding:12px;min-width:0}
+.stat-card span{display:block;color:#667085;margin-bottom:4px}.stat-card b{font-size:1.25rem}.stat-card.accent{background:#edf7ff;border-color:#b8daff}
+.buildings-box{margin-top:14px;padding:12px;border:1px solid #e0e6ef;border-radius:16px;background:#fbfcfe}
+.facility-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.facility-pill{display:inline-flex;align-items:center;gap:6px;background:#eef3f8;border:1px solid #dbe4ee;border-radius:999px;padding:7px 11px;font-size:.95rem}
+.bonus-line{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;color:#475467}
+.facility-card{margin:0}.facility-card.built{background:#f2faf5;border-color:#a9d7b7}.facility-title{font-size:1.05rem;display:flex;align-items:center;gap:8px}.facility-icon{font-size:1.5rem}
+.select-label{display:block;margin:12px 4px 4px;font-weight:800}.choose-country-hint{padding:20px;margin-top:12px;text-align:center;border:1px dashed #c5cfdb;border-radius:14px;background:#f8fafc;color:#667085}
+.contract-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start;margin-top:12px}.contract-pane{min-width:0;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:12px}.contract-pane h3{margin-top:0}.contract-pane .resource-list{gap:6px}.contract-pane .qty-row{grid-template-columns:minmax(100px,1fr) 42px 62px 42px;padding:7px;gap:6px}.contract-pane .qty-row button{min-height:40px;padding:6px}.contract-pane .qty-input{min-height:40px;padding:6px}.send-contract{width:100%;margin-top:12px}
+.board-columns{margin:12px 0}
+.asset-team-card{background:#fff;border:1px solid #dfe4ec;border-radius:16px;padding:14px}.asset-mini{margin-top:6px}.facility-list.small .facility-pill{font-size:.82rem;padding:5px 9px}
+@media(max-width:720px){.asset-grid{grid-template-columns:1fr 1fr}.stat-card.accent{grid-column:1/-1}.contract-columns{grid-template-columns:1fr}.need-inline{border-radius:14px}.contract-pane .qty-row{grid-template-columns:minmax(90px,1fr) 42px 60px 42px}}

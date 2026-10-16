@@ -12,7 +12,7 @@ function team(st,id){return st.teams.find(t=>t.id===id)}
 const sockets=[]; let pass=0;
 async function test(name,fn){try{await fn();console.log(`PASS ${name}`);pass++}catch(e){console.error(`FAIL ${name}: ${e.message}`);throw e}}
 try{
-  await test('health/version',async()=>{const r=await fetch(`${BASE}/health`);assert(r.ok,'health HTTP 실패');const j=await r.json();assert(j.ok,'health ok=false');assert(/^0\.[34]/.test(j.version||''),`예상 버전 아님: ${j.version}`)});
+  await test('health/version',async()=>{const r=await fetch(`${BASE}/health`);assert(r.ok,'health HTTP 실패');const j=await r.json();assert(j.ok,'health ok=false');assert(/^0\.6\./.test(j.version||''),`예상 버전 아님: ${j.version}`)});
   const meta=await (await fetch(`${BASE}/api/new-room`)).json();
   assert(meta.code&&meta.token,'방 생성 응답 불완전');
   const teacher=client(); sockets.push(teacher); await once(teacher,'connect');
@@ -39,15 +39,15 @@ try{
   state=await emitState(teacher,'teacher','start',x=>x.phase==='intro');
   await test('game starts',async()=>assert(state.round===1,'round 1 아님'));
   state=await emitState(teacher,'teacher','produce',x=>x.phase==='trade');
-  await test('automatic production',async()=>{assert(team(state,students[0].id).inv.food===12,'white food !=12');assert(team(state,students[1].id).inv.wood===12,'brown wood !=12')});
+  await test('automatic production',async()=>{assert(team(state,students[0].id).inv.food===25,'white food !=25');assert(team(state,students[1].id).inv.wood===25,'brown wood !=25')});
 
   await test('direct resource contract',async()=>{
     const white=students[0],brown=students[1];
     state=await emitState(white.c,'contract',{to:brown.id,offer:{food:3},want:{wood:3}},x=>x.contracts.some(c=>c.from===white.id&&c.to===brown.id&&c.status==='pending'));
     const c=state.contracts.find(c=>c.from===white.id&&c.to===brown.id&&c.status==='pending');
     state=await emitState(brown.c,'answer',{id:c.id,ok:true},x=>x.contracts.find(z=>z.id===c.id)?.status==='done');
-    assert(team(state,white.id).inv.food===9&&team(state,white.id).inv.wood===3,'white 재고 오류');
-    assert(team(state,brown.id).inv.food===3&&team(state,brown.id).inv.wood===9,'brown 재고 오류');
+    assert(team(state,white.id).inv.food===22&&team(state,white.id).inv.wood===3,'white 재고 오류');
+    assert(team(state,brown.id).inv.food===3&&team(state,brown.id).inv.wood===22,'brown 재고 오류');
   });
 
   await test('money-resource contract',async()=>{
@@ -56,7 +56,7 @@ try{
     const c=state.contracts.find(c=>c.from===red.id&&c.to===black.id&&c.status==='pending');
     state=await emitState(black.c,'answer',{id:c.id,ok:true},x=>x.contracts.find(z=>z.id===c.id)?.status==='done');
     assert(team(state,red.id).cash===18&&team(state,red.id).inv.oil===1,'red 화폐거래 오류');
-    assert(team(state,black.id).cash===22&&team(state,black.id).inv.oil===11,'black 화폐거래 오류');
+    assert(team(state,black.id).cash===22&&team(state,black.id).inv.oil===24,'black 화폐거래 오류');
   });
 
   await test('board post owner delete',async()=>{
@@ -113,10 +113,10 @@ try{
   state=await emitState(teacher,'teacher','produce',x=>x.round===3&&x.phase==='trade');
   state=await emitState(teacher,'teacher','consume',x=>x.round===3&&x.phase==='results');
   state=await emitState(teacher,'teacher','build',x=>x.phase==='build');
-  await test('facility construction',async()=>{const t0=team(state,students[0].id);assert(t0.cash>=14,`현금 부족 ${t0.cash}`);const before=t0.cash;state=await emitState(students[0].c,'build','road',x=>team(x,students[0].id).buildings.some(b=>b.id==='road'));assert(team(state,students[0].id).cash===before-14,'건설비 차감 오류')});
+  await test('facility construction',async()=>{const t0=team(state,students[0].id);assert(t0.cash>=10,`현금 부족 ${t0.cash}`);const before=t0.cash;state=await emitState(students[0].c,'build','road',x=>team(x,students[0].id).buildings.some(b=>b.id==='road'));assert(team(state,students[0].id).cash===before-10,'건설비 차감 오류')});
   state=await emitState(teacher,'teacher','next',x=>x.round===4&&x.phase==='ready');
   state=await emitState(teacher,'teacher','produce',x=>x.round===4&&x.phase==='trade');
-  await test('production facility applies next round',async()=>{const t0=team(state,students[0].id);assert(t0.lastProduction.qty===13,`생산량 ${t0.lastProduction.qty}`)});
+  await test('production facility applies next round',async()=>{const t0=team(state,students[0].id);assert(t0.lastProduction.qty===16,`생산량 ${t0.lastProduction.qty}`)});
 
   // Finish rounds 4-6
   for(let rd=4;rd<=6;rd++){
