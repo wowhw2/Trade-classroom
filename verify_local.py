@@ -26,6 +26,9 @@ tests=[
 ("single pending trade lock","pendingContract" in server and "tradeBusy" in server and "busyTeam" in student),
 ("board requirement balance guard","!enough(t,p.want)" in server and "canGivePack(t,p.want)" in student and "shortagePack(t,p.want)" in student),
 ("trade completion receipt","tradeComplete" in server and "거래가 성사되었습니다!" in student and "거래 후 우리 나라 자원 현황" in student),
+("teacher full game reset","resetRoomForReplay" in server and "d.type==='resetGame'" in server and "roomReset" in student and "게임 초기화" in teacher),
+("student automatic resume","resumeExisting" in student and "s.on('connect',resumeExisting)" in student and "localStorage.getItem('trade_'+room)" in student),
+("teacher automatic resume","joinTeacher" in teacher and "s.on('connect',()=>joinTeacher())" in teacher),
 ]
 bad=[n for n,ok in tests if not ok]
 for n,ok in tests: print(("PASS" if ok else "FAIL"),n)

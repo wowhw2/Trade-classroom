@@ -127,5 +127,28 @@ try{
   }
   await test('6 rounds final',async()=>{assert(state.phase==='final','final 아님');for(const t of state.teams){const fv=t.buildings.reduce((a,b)=>a+b.cost,0);assert(Number.isFinite(t.cash+fv),'총자산 오류')}});
 
+  await test('teacher reset keeps teams and nations but clears game progress',async()=>{
+    const nationsBefore=Object.fromEntries(state.teams.map(t=>[t.id,t.nation]));
+    state=await emitState(teacher,'teacherAction',{type:'resetGame'},x=>x.phase==='lobby'&&x.round===0);
+    assert(state.posts.length===0&&state.contracts.length===0,'거래 데이터가 남음');
+    for(const t of state.teams){
+      assert(t.nation===nationsBefore[t.id],'나라 배정이 바뀜');
+      assert(t.cash===20,'자본 초기화 실패');
+      assert(Object.values(t.inv).every(v=>v===0),'생산품 초기화 실패');
+      assert(t.buildings.length===0,'건설 초기화 실패');
+      assert(t.stats.trades===0&&t.stats.waste===0&&t.stats.full===0,'통계 초기화 실패');
+    }
+  });
+
+  await test('student can resume by stored team id while joining is closed',async()=>{
+    const original=students[0]; original.c.disconnect();
+    const resumed=client(); sockets.push(resumed); await once(resumed,'connect');
+    const joined=once(resumed,'joined',id=>id===original.id);
+    const stateSeen=once(resumed,'state',x=>x.teams.some(t=>t.id===original.id));
+    resumed.emit('join',{code:meta.code,teamId:original.id});
+    await joined; const resumedState=await stateSeen;
+    assert(team(resumedState,original.id)?.nation==='white','이어하기 상태 불일치');
+  });
+
   console.log(`\nE2E PASS ${pass} tests against ${BASE}`);
 } finally { for(const x of sockets) try{x.disconnect()}catch{} }

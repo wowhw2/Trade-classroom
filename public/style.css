@@ -129,3 +129,5 @@ button,input,select,summary,label,.pill,.card{touch-action:manipulation}
 .receipt-resource-item small{display:block;color:#687386;font-size:.78rem}
 .receipt-confirm{display:block;width:100%;margin:4px 0 0;min-height:54px;background:#087747}
 @media(max-width:650px){.receipt-exchange{grid-template-columns:1fr}.receipt-resource-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.teacher-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
