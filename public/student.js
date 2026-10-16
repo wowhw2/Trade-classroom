@@ -1,5 +1,5 @@
 const s=io(),q=new URLSearchParams(location.search),room=q.get('room'),app=document.querySelector('#app'),preview=q.get('previewTeam');
-let me=preview||localStorage.getItem('trade_'+room),st,notice='',noticeKind='ok',tradeReceipt=null,lastResumeSocketId='',actionFlow=null,actionFlowTimer=null,pendingBuild=null;
+let me=preview||localStorage.getItem('trade_'+room),st,notice='',noticeKind='ok',tradeReceipt=null,lastResumeSocketId='',actionFlow=null,actionFlowTimer=null,pendingBuild=null,gameGuideOpen=false,gameGuideShownKey='';
 const I={food:'🍚',wood:'🪵',car:'🚗',oil:'🛢️',textile:'🧵',tech:'💡'},K=Object.keys(I),NM={food:'식량',wood:'목재',car:'자동차',oil:'석유',textile:'섬유',tech:'기술력'};
 const ND={white:['⚪ 하얀 나라','food',{food:2,wood:3,car:1,oil:1,textile:3,tech:2}],brown:['🟤 갈색 나라','wood',{food:2,wood:2,car:2,oil:2,textile:2,tech:2}],red:['🔴 빨간 나라','car',{food:2,wood:1,car:3,oil:2,textile:3,tech:1}],black:['⚫ 검은 나라','oil',{food:2,wood:1,car:3,oil:2,textile:1,tech:3}],blue:['🔵 파란 나라','textile',{food:2,wood:2,car:1,oil:3,textile:2,tech:2}],yellow:['🟡 노란 나라','tech',{food:2,wood:3,car:2,oil:2,textile:1,tech:2}]};
 const FI={road:'🛣️',port:'⚓',airport:'✈️',hospital:'🏥',school:'🏫',park:'🌳',subway:'🚇',access:'♿',shelter:'🐾'};
@@ -82,6 +82,27 @@ function actionFlowModal(t,n){
  return ''
 }
 
+function gameGuideModal(t,n){
+ if(!gameGuideOpen||!st?.settings)return '';
+ const set=st.settings,need=n?needStrip(n):'';
+ return `<div class="guide-overlay"><div class="guide-modal" role="dialog" aria-modal="true" aria-labelledby="gameGuideTitle">
+  <div class="guide-hero"><div class="guide-hero-icon">🌏</div><div><span class="guide-kicker">무역놀이 한눈에 보기</span><h2 id="gameGuideTitle">서로 필요한 물건을 무역해<br>우리 나라를 발전시켜요!</h2></div></div>
+  <div class="guide-start"><div><span>💰 시작 자본</span><b>${set.initialCash}</b></div><div><span>📦 시작 주력 생산품</span><b>${set.initialGoods}개</b></div><div><span>🎁 기본 소비 보너스</span><b>${set.baseReward}</b></div></div>
+  <div class="guide-flow" aria-label="게임 진행 순서">
+   <div class="guide-step"><span class="guide-step-icon">🏭</span><b>1. 생산</b><p>매 라운드 주력 생산품 <strong>${set.baseProduction}개</strong>를 만들어요.</p></div>
+   <div class="guide-arrow">➜</div>
+   <div class="guide-step"><span class="guide-step-icon">🤝</span><b>2. 무역</b><p>다른 나라와 직접 이야기하고 필요한 물건을 거래해요.</p></div>
+   <div class="guide-arrow">➜</div>
+   <div class="guide-step"><span class="guide-step-icon">📦</span><b>3. 소비</b><p>나라에 필요한 물건을 내고 <strong>보너스 자본</strong>을 받아요.</p></div>
+   <div class="guide-arrow">➜</div>
+   <div class="guide-step"><span class="guide-step-icon">🏗️</span><b>4. 발전</b><p>${set.buildUnlock}라운드부터 시설을 지어 생산과 보너스를 늘려요.</p></div>
+  </div>
+  ${n?`<div class="guide-mission"><div><b>🎯 우리 나라가 한 라운드에 꼭 모아야 할 물건</b><span>주력 생산품: ${I[n[1]]} ${NM[n[1]]}</span></div><div class="guide-needs">${need}</div></div>`:''}
+  <div class="guide-rules"><div><span>📉</span><p><b>부족하면?</b><br>부족한 물건 1개마다 소비 보너스가 ${set.shortagePenalty}씩 줄어요.</p></div><div><span>🧺</span><p><b>남은 물건은?</b><br>종류별 최대 ${set.stockCap}개까지만 다음 라운드로 가져가요.</p></div><div><span>💡</span><p><b>가장 중요!</b><br>혼자 필요한 모든 물건을 만들 수 없으니 서로 무역해야 해요.</p></div></div>
+  <button id="closeGameGuide" class="guide-confirm">게임 시작 준비 완료! 🚀</button>
+ </div></div>`
+}
+function openGameGuide(){gameGuideOpen=true;render(st?.phase==='trade')}
 function join(n=''){s.emit('join',{code:room,name:n,teamId:me})}
 document.querySelector('#join')?.addEventListener('click',()=>join(document.querySelector('#name').value));
 s.on('joined',id=>{me=id;if(!preview)localStorage.setItem('trade_'+room,id)});
@@ -101,12 +122,15 @@ s.on('actionAck',d=>{
 s.on('msg',alert);
 s.on('joinDenied',d=>{app.innerHTML=`<section class=card><h1>🔒 참가가 마감되었습니다</h1><p>${d.reason}</p></section>`});
 s.on('teamRemoved',d=>{if(d.teamId!==me)return;if(preview)return;localStorage.removeItem('trade_'+room);me=null;app.innerHTML=`<section class=card><h1>수업방에서 나왔어요</h1><p>잘못 접속했다면 QR을 다시 찍고 올바른 모둠 이름으로 참가하세요.</p><button id=rejoin>다시 참가하기</button></section>`;document.querySelector('#rejoin').onclick=()=>location.reload()});
-s.on('roomReset',d=>{resetTradeDraft();tradeReceipt=null;clearActionFlow();noticeKind='ok';notice=d?.message||'선생님이 게임을 처음 상태로 초기화했어요.';app.innerHTML=`<section class=card><h1>♻️ 게임을 다시 시작해요</h1><p>${notice}</p><p class=muted>모둠과 나라 배정은 그대로 유지됩니다.</p></section>`});
+s.on('roomReset',d=>{resetTradeDraft();tradeReceipt=null;clearActionFlow();gameGuideOpen=false;gameGuideShownKey='';noticeKind='ok';notice=d?.message||'선생님이 게임을 처음 상태로 초기화했어요.';app.innerHTML=`<section class=card><h1>♻️ 게임을 다시 시작해요</h1><p>${notice}</p><p class=muted>모둠과 나라 배정은 그대로 유지됩니다.</p></section>`});
 s.on('state',x=>{
- const prev=st,wasTrade=prev?.phase==='trade';if(wasTrade)syncTradeDraft();
+ const prev=st,wasTrade=prev?.phase==='trade';if(wasTrade)syncTradeDraft();if(prev?.phase==='intro'&&x.phase!=='intro')gameGuideOpen=false;
  if(wasTrade&&x.phase!=='trade'){resetTradeDraft();tradeReceipt=null}
  if(!wasTrade&&x.phase==='trade')resetTradeDraft();
- st=x;render(x.phase==='trade');
+ st=x;
+ const guideKey=String(x.resetSeq||0);
+ if(x.phase==='intro'&&gameGuideShownKey!==guideKey){gameGuideShownKey=guideKey;gameGuideOpen=true}
+ render(x.phase==='trade');
  if(!prev)return;
  const t=x.teams.find(z=>z.id===me),n=t?.nation&&ND[t.nation];if(!t||!n)return;
  if(prev.phase!==x.phase&&x.phase==='trade'&&t.lastProduction){beginActionFlow('produce',{...t.lastProduction,item:t.lastProduction.item||n[1]},950);return}
@@ -144,8 +168,8 @@ function render(restore=false){
  let t=st?.teams.find(x=>x.id===me);if(!t)return;let n=t.nation&&ND[t.nation];
  app.innerHTML=`${overview(t,n)}${notice?`<section class="card notice ${noticeKind==='busy'?'busy-notice':noticeKind==='warn'?'warn-notice':''}"><b>${noticeKind==='busy'?'🔒':noticeKind==='warn'?'⚠️':'✅'} ${notice}</b></section>`:''}`;
  if(!n){app.innerHTML+=`<section class=card>선생님이 나라를 배정하고 있어요.</section>`;return}
- app.innerHTML+=`<section class=card><div class=row><b>ROUND ${st.round}</b><span class=pill>주력 생산품 ${I[n[1]]} ${NM[n[1]]}</span></div><div>${K.map(k=>`<span class=pill>${I[k]} ${NM[k]} ${t.inv[k]} ${t.inv[k]<n[2][k]?'<b class=warn>부족</b>':''}</span>`).join('')}</div></section>`;
- if(st.phase==='intro')app.innerHTML+=`<section class=card><h2>게임 방법</h2><p>처음에 💰 <b>${st.settings.initialCash}</b>과 주력 생산품 <b>${st.settings.initialGoods}개</b>를 받아요.</p><p>매 라운드 🏭 주력 생산품 <b>${st.settings.baseProduction}개</b> 생산 → 🤝 무역 → 📦 소비 순서로 진행해요.</p><p>필요 물품을 모두 채우면 기본 소비 보상은 💰 <b>${st.settings.baseReward}</b>예요. 부족 1개당 보상 1이 줄어요.</p><p>친구와 직접 이야기하고 합의하면 iPad에서 계약하세요.</p><p>남는 자원은 종류별 최대 <b>${st.settings.stockCap}개</b>만 보관할 수 있어요.</p></section>`;
+ app.innerHTML+=`<section class=card><div class=row><div class=round-title><b>ROUND ${st.round}</b><span class=pill>주력 생산품 ${I[n[1]]} ${NM[n[1]]}</span></div><button id=openGameGuide class="guide-open-btn alt">🎮 게임 방법</button></div><div>${K.map(k=>`<span class=pill>${I[k]} ${NM[k]} ${t.inv[k]} ${t.inv[k]<n[2][k]?'<b class=warn>부족</b>':''}</span>`).join('')}</div></section>`;
+ if(st.phase==='intro')app.innerHTML+=`<section class="card intro-ready-card"><div class="intro-ready-icon">🎮</div><div><h2>게임 설명 단계</h2><p>팝업에서 게임 방법을 확인한 뒤 선생님의 생산 시작을 기다려 주세요.</p></div><button class="alt show-guide-again">게임 방법 다시 보기</button></section>`;
  else if(st.phase==='buildIntro')app.innerHTML+=`<section class=card><h2>🏗️ 건설이 열렸어요!</h2><p>시설은 생산량이나 소비 보상을 높여 줍니다.</p><p>시설에 쓴 돈도 최종 <b>시설 자산</b>으로 계산됩니다.</p></section>`;
  else if(st.phase==='results'&&t.last)app.innerHTML+=`<section class=card><h2>📦 소비·재고 정리</h2><p>부족 <b>${t.last.miss}</b>개 · 보상 <b class=good>+${t.last.reward}</b> · 폐기 <b class=warn>${t.last.waste}</b>개</p></section>`;
  else if(st.phase==='trade')trade(t);
@@ -154,9 +178,13 @@ function render(restore=false){
  else app.innerHTML+=`<section class=card><h2>잠시 기다려 주세요</h2><p>선생님이 다음 단계를 시작합니다.</p></section>`;
  if(tradeReceipt&&st.phase==='trade')app.innerHTML+=tradeReceiptModal(t,n);
  if(actionFlow)app.innerHTML+=actionFlowModal(t,n);
+ if(gameGuideOpen&&!tradeReceipt&&!actionFlow)app.innerHTML+=gameGuideModal(t,n);
  document.querySelector('#closeTradeReceipt')?.addEventListener('click',()=>{tradeReceipt=null;render(true)});
  document.querySelector('.close-action-flow')?.addEventListener('click',()=>{clearActionFlow();render(st.phase==='trade')});
- if(restore&&st.phase==='trade'&&!tradeReceipt&&!actionFlow)restoreTradeUi()
+ document.querySelector('#openGameGuide')?.addEventListener('click',openGameGuide);
+ document.querySelector('.show-guide-again')?.addEventListener('click',openGameGuide);
+ document.querySelector('#closeGameGuide')?.addEventListener('click',()=>{gameGuideOpen=false;render(st.phase==='trade')});
+ if(restore&&st.phase==='trade'&&!tradeReceipt&&!actionFlow&&!gameGuideOpen)restoreTradeUi()
 }
 
 function trade(t){

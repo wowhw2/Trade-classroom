@@ -33,6 +33,7 @@ tests=[
 ("consumption progress and receipt","소비 중입니다" in student and "소비가 끝났어요!" in student and "사용한 물건" in student),
 ("construction progress and receipt","건설 중입니다" in student and "buildComplete" in server and "건설되었습니다" in student),
 ("next round briefing","ROUND ${p.round} 준비" in student and "현재 보유 자원" in student and "건설 현황" in student),
+("visual game guide popup","gameGuideModal" in student and "무역놀이 한눈에 보기" in student and "guide-flow" in student and "게임 방법 다시 보기" in student),
 ]
 bad=[n for n,ok in tests if not ok]
 for n,ok in tests: print(("PASS" if ok else "FAIL"),n)

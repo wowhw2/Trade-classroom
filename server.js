@@ -17,7 +17,7 @@ function pendingContract(r,teamId){return r.contracts.find(c=>c.status==='pendin
 function busyReply(socket,message,teamId){socket.emit('tradeBusy',{message,teamId})}
 function resetRoomForReplay(r){r.resetSeq=(r.resetSeq||0)+1;r.round=0;r.phase='lobby';r.joinOpen=r.teams.length===0;r.posts=[];r.contracts=[];r.teams.forEach(t=>{t.cash=r.settings.initialCash;t.inv=Object.fromEntries(R.map(k=>[k,0]));t.buildings=[];t.stats={trades:0,waste:0,full:0};t.last=null;t.lastProduction=null})}
 
-app.get('/health',(req,res)=>res.json({ok:true,version:'0.6.8'}));
+app.get('/health',(req,res)=>res.json({ok:true,version:'0.7.0'}));
 app.get('/api/qr/:code',async(req,res)=>{let r=rooms[req.params.code];if(!r)return res.status(404).end();let url=`${publicBase(req)}/?room=${r.code}`;res.type('png');res.send(await QRCode.toBuffer(url,{width:800,margin:2,errorCorrectionLevel:'M'}))});
 app.get('/api/new-room',async(req,res)=>{let r=newRoom(),url=`${publicBase(req)}/?room=${r.code}`;res.json({code:r.code,token:r.token,url,qr:await QRCode.toDataURL(url,{width:800,margin:2})})});
 app.get('/api/new-simulation',async(req,res)=>{
@@ -54,4 +54,4 @@ io.on('connection',s=>{
  s.on('cancelBoardContract',d=>{let r=rooms[s.data.code],c=r&&r.contracts.find(x=>x.id===d.id);if(!r||!c||c.source!=='board'||c.status!=='pending'||r.phase!=='trade')return;if(c.from!==s.data.teamId&&c.to!==s.data.teamId)return;c.status='cancelled';let p=r.posts.find(x=>x.id===c.postId);if(p&&p.active&&p.lockedBy===c.id){p.lockedBy=null;p.status='open'}s.emit('actionAck',{type:'cancelBoardContract',message:'거래 신청을 취소했어요. 게시물이 다시 거래 가능 상태가 되었습니다.'});emit(r)});
  s.on('build',id=>{let r=rooms[s.data.code],t=r&&T(r,s.data.teamId),f=r&&r.facilities.find(x=>x.id===id);if(!t||!f||r.phase!=='build')return s.emit('buildFailed',{message:'지금은 건설할 수 없습니다.'});if(t.buildings.some(x=>x.id===id))return s.emit('buildFailed',{message:'이미 건설한 시설입니다.'});if(t.cash<f.cost)return s.emit('buildFailed',{message:'건설에 필요한 자본이 부족합니다.'});let cashBefore=t.cash;t.cash-=f.cost;t.buildings.push({...f,builtRound:r.round});s.emit('actionAck',{type:'build',message:`${f.name} 건설 완료!`});s.emit('buildComplete',{...f,cashBefore,cashAfter:t.cash,facilityValue:t.buildings.reduce((a,b)=>a+b.cost,0),totalAssets:t.cash+t.buildings.reduce((a,b)=>a+b.cost,0)});s.emit('eventSound',{type:'build'});emit(r)})
 });
-server.listen(process.env.PORT||3000,'0.0.0.0',()=>console.log('Trade classroom v0.6.9 ready'));
+server.listen(process.env.PORT||3000,'0.0.0.0',()=>console.log('Trade classroom v0.7.0 ready'));
