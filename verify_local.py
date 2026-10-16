@@ -23,6 +23,9 @@ tests=[
 ("facility icons","const FI=" in student and "facility-pill" in student),
 ("sound events","eventSound" in server and "playSound" in student),
 ("double tap zoom guard","user-scalable=no" in (root/"public/index.html").read_text(encoding="utf-8")),
+("single pending trade lock","pendingContract" in server and "tradeBusy" in server and "busyTeam" in student),
+("board requirement balance guard","!enough(t,p.want)" in server and "canGivePack(t,p.want)" in student and "shortagePack(t,p.want)" in student),
+("trade completion receipt","tradeComplete" in server and "거래가 성사되었습니다!" in student and "거래 후 우리 나라 자원 현황" in student),
 ]
 bad=[n for n,ok in tests if not ok]
 for n,ok in tests: print(("PASS" if ok else "FAIL"),n)
