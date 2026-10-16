@@ -1,5 +1,5 @@
 const s=io(),q=new URLSearchParams(location.search),room=q.get('room'),app=document.querySelector('#app'),preview=q.get('previewTeam');
-let me=preview||localStorage.getItem('trade_'+room),st,notice='',noticeKind='ok',tradeReceipt=null,lastResumeSocketId='';
+let me=preview||localStorage.getItem('trade_'+room),st,notice='',noticeKind='ok',tradeReceipt=null,lastResumeSocketId='',actionFlow=null,actionFlowTimer=null,pendingBuild=null;
 const I={food:'🍚',wood:'🪵',car:'🚗',oil:'🛢️',textile:'🧵',tech:'💡'},K=Object.keys(I),NM={food:'식량',wood:'목재',car:'자동차',oil:'석유',textile:'섬유',tech:'기술력'};
 const ND={white:['⚪ 하얀 나라','food',{food:2,wood:3,car:1,oil:1,textile:3,tech:2}],brown:['🟤 갈색 나라','wood',{food:2,wood:2,car:2,oil:2,textile:2,tech:2}],red:['🔴 빨간 나라','car',{food:2,wood:1,car:3,oil:2,textile:3,tech:1}],black:['⚫ 검은 나라','oil',{food:2,wood:1,car:3,oil:2,textile:1,tech:3}],blue:['🔵 파란 나라','textile',{food:2,wood:2,car:1,oil:3,textile:2,tech:2}],yellow:['🟡 노란 나라','tech',{food:2,wood:3,car:2,oil:2,textile:1,tech:2}]};
 const FI={road:'🛣️',port:'⚓',airport:'✈️',hospital:'🏥',school:'🏫',park:'🌳',subway:'🚇',access:'♿',shelter:'🐾'};
@@ -37,24 +37,82 @@ function playSound(type){
 }
 document.addEventListener('pointerdown',()=>initAudio(),{passive:true});
 
+function clearActionFlow(){if(actionFlowTimer){clearTimeout(actionFlowTimer);actionFlowTimer=null}actionFlow=null;pendingBuild=null}
+function actionVisual(type){
+ if(type==='produce')return `<div class="process-visual produce-visual" aria-hidden="true"><div class="factory-emoji">🏭</div><div class="conveyor"><span>📦</span><span>📦</span><span>📦</span></div></div>`;
+ if(type==='consume')return `<div class="process-visual consume-visual" aria-hidden="true"><div class="consume-items"><span>🍚</span><span>🪵</span><span>🚗</span><span>🧵</span></div><div class="consume-box">📦</div></div>`;
+ if(type==='build')return `<div class="process-visual build-visual" aria-hidden="true"><span class="crane">🏗️</span><span class="hammer">🔨</span><span class="building">🏢</span></div>`;
+ return ''
+}
+function beginActionFlow(type,payload={},delay=950){
+ if(actionFlowTimer)clearTimeout(actionFlowTimer);
+ actionFlow={type,stage:'working',payload};render(false);
+ actionFlowTimer=setTimeout(()=>{if(!actionFlow||actionFlow.type!==type)return;actionFlow={type,stage:'result',payload:actionFlow.payload};actionFlowTimer=null;render(false)},delay)
+}
+function finishBuildFlow(payload){
+ if(!actionFlow||actionFlow.type!=='build'){actionFlow={type:'build',stage:'working',payload};render(false)}else actionFlow.payload=payload;
+ if(actionFlowTimer)clearTimeout(actionFlowTimer);
+ actionFlowTimer=setTimeout(()=>{if(!actionFlow||actionFlow.type!=='build')return;actionFlow={type:'build',stage:'result',payload};actionFlowTimer=null;pendingBuild=null;render(false)},700)
+}
+function showRoundBrief(payload){if(actionFlowTimer){clearTimeout(actionFlowTimer);actionFlowTimer=null}actionFlow={type:'round',stage:'result',payload};render(false)}
+function itemDeltaGrid(map,prefix='-'){return `<div class="action-delta-grid">${K.map(k=>`<div><span>${I[k]} ${NM[k]}</span><b>${prefix}${map?.[k]||0}</b></div>`).join('')}</div>`}
+function inventoryBrief(inv){return `<div class="brief-resource-grid">${K.map(k=>`<div><span>${I[k]} ${NM[k]}</span><b>${inv?.[k]||0}</b></div>`).join('')}</div>`}
+function actionFlowModal(t,n){
+ if(!actionFlow)return '';
+ const a=actionFlow,p=a.payload||{};
+ if(a.stage==='working'){
+  const title=a.type==='produce'?'생산 중입니다…':a.type==='consume'?'소비 중입니다…':'건설 중입니다…';
+  const desc=a.type==='produce'?'우리 나라의 주력 생산품을 만들고 있어요.':a.type==='consume'?'나라 유지에 필요한 물건을 사용하고 있어요.':'새로운 시설을 짓고 있어요.';
+  return `<div class="action-overlay"><div class="action-modal working" role="status" aria-live="polite"><h2>${title}</h2>${actionVisual(a.type)}<p>${desc}</p><div class="progress-dots"><i></i><i></i><i></i></div></div></div>`
+ }
+ if(a.type==='produce'){
+  const key=p.item||n?.[1],label=key?`${I[key]} ${NM[key]}`:'주력 생산품',bonus=p.bonus||0;
+  return `<div class="action-overlay"><div class="action-modal result" role="dialog" aria-modal="true"><div class="result-icon">✅</div><h2>생산 완료!</h2><p class="result-lead"><b>${label} ${p.qty||0}개</b>를 생산했어요.</p>${bonus?`<p class="muted">기본 생산 ${p.base||0} + 시설 보너스 ${bonus}</p>`:''}<div class="action-summary"><span>생산 전 <b>${p.before??0}</b></span><span>➜</span><span>현재 <b>${p.after??t?.inv?.[key]??0}</b></span></div><button class="close-action-flow receipt-confirm">확인하고 무역하기</button></div></div>`
+ }
+ if(a.type==='consume'){
+  return `<div class="action-overlay"><div class="action-modal result wide" role="dialog" aria-modal="true"><div class="result-icon">📦</div><h2>소비가 끝났어요!</h2><p class="result-lead">나라 유지에 필요한 물건을 사용했습니다.</p><h3>사용한 물건</h3>${itemDeltaGrid(p.used||{})}<div class="cash-result"><span>💰 소비 보너스</span><b>+${p.reward||0}</b><small>자본 ${p.cashBefore??t.cash} → ${p.cashAfter??t.cash}</small></div>${p.miss?`<p class="warn"><b>부족한 물건 ${p.miss}개</b> 때문에 보너스가 줄었어요.</p>`:'<p class="good"><b>필요한 물건을 모두 준비했어요!</b></p>'}${p.waste?`<p class="muted">재고 정리로 ${p.waste}개를 정리했어요.</p>`:''}<h3>소비 후 남은 자원</h3>${inventoryBrief(p.after||t.inv)}<button class="close-action-flow receipt-confirm">확인</button></div></div>`
+ }
+ if(a.type==='build'){
+  const icon=FI[p.id]||'🏗️',effect=p.type==='production'?`매 라운드 생산량이 ${p.value}개 증가합니다.`:`소비 성공 보너스가 ${p.value} 증가합니다.`;
+  return `<div class="action-overlay"><div class="action-modal result" role="dialog" aria-modal="true"><div class="result-icon">${icon}</div><h2>${p.name||'시설'}이(가) 건설되었습니다!</h2><p class="result-lead"><b>${effect}</b></p><div class="action-summary"><span>💰 자본 <b>${p.cashBefore??''}</b></span><span>➜</span><span><b>${p.cashAfter??t.cash}</b></span></div><p class="muted">시설 가치 ${p.cost||0}은 국가 총자산에 포함됩니다.</p><button class="close-action-flow receipt-confirm">확인</button></div></div>`
+ }
+ if(a.type==='round'){
+  return `<div class="action-overlay"><div class="action-modal result wide round-brief" role="dialog" aria-modal="true"><div class="result-icon">🌏</div><h2>ROUND ${p.round} 준비</h2><p class="result-lead">새 라운드를 시작하기 전에 우리 나라 상황을 확인해요.</p><div class="brief-assets"><div><span>💰 현재 자본</span><b>${p.cash}</b></div><div><span>🌟 국가 총자산</span><b>${p.totalAssets}</b></div></div><h3>현재 보유 자원</h3>${inventoryBrief(p.inv)}<h3>건설 현황</h3><div class="facility-list">${p.buildings?.length?p.buildings.map(b=>`<span class="facility-pill">${FI[b.id]||'🏗️'} ${b.name}</span>`).join(''):'<span class="muted">아직 건설한 시설이 없어요.</span>'}</div><div class="bonus-line"><span>🏭 생산 보너스 <b>+${p.productionBonus||0}</b></span><span>🎁 소비 보너스 <b>+${p.rewardBonus||0}</b></span></div><button class="close-action-flow receipt-confirm">ROUND ${p.round} 시작 준비 완료</button></div></div>`
+ }
+ return ''
+}
+
 function join(n=''){s.emit('join',{code:room,name:n,teamId:me})}
 document.querySelector('#join')?.addEventListener('click',()=>join(document.querySelector('#name').value));
 s.on('joined',id=>{me=id;if(!preview)localStorage.setItem('trade_'+room,id)});
 s.on('eventSound',d=>playSound(d?.type));
 s.on('tradeComplete',d=>{tradeReceipt=d;notice='';noticeKind='ok';render(true)});
+s.on('buildComplete',d=>{finishBuildFlow(d)});
+s.on('buildFailed',d=>{clearActionFlow();noticeKind='warn';notice=d?.message||'건설할 수 없습니다.';render(false)});
 s.on('tradeFailed',d=>{syncTradeDraft();noticeKind='warn';notice=d.message||'현재 거래 조건을 충족할 수 없어 거래할 수 없습니다.';render(true)});
 s.on('tradeBusy',d=>{syncTradeDraft();noticeKind='busy';notice=d?.message||'다른 나라와 거래 중입니다. 거래가 끝난 뒤 다시 시도해 주세요.';render(true);setTimeout(()=>{notice='';noticeKind='ok';render(true)},3200)});
 s.on('actionAck',d=>{
  syncTradeDraft();
  if(d.type==='contract'){tradeDraft.to='';tradeDraft.give=blankPack();tradeDraft.want=blankPack();tradeDraft.focusId=''}
  if(d.type==='post'){tradeDraft.pg=blankPack();tradeDraft.pw=blankPack();tradeDraft.postOpen=false;tradeDraft.focusId=''}
+ if(d.type==='build')return;
  noticeKind='ok';notice=d.message||'처리되었습니다.';render(true);setTimeout(()=>{notice='';render(true)},2500)
 });
 s.on('msg',alert);
 s.on('joinDenied',d=>{app.innerHTML=`<section class=card><h1>🔒 참가가 마감되었습니다</h1><p>${d.reason}</p></section>`});
 s.on('teamRemoved',d=>{if(d.teamId!==me)return;if(preview)return;localStorage.removeItem('trade_'+room);me=null;app.innerHTML=`<section class=card><h1>수업방에서 나왔어요</h1><p>잘못 접속했다면 QR을 다시 찍고 올바른 모둠 이름으로 참가하세요.</p><button id=rejoin>다시 참가하기</button></section>`;document.querySelector('#rejoin').onclick=()=>location.reload()});
-s.on('roomReset',d=>{resetTradeDraft();tradeReceipt=null;noticeKind='ok';notice=d?.message||'선생님이 게임을 처음 상태로 초기화했어요.';app.innerHTML=`<section class=card><h1>♻️ 게임을 다시 시작해요</h1><p>${notice}</p><p class=muted>모둠과 나라 배정은 그대로 유지됩니다.</p></section>`});
-s.on('state',x=>{const wasTrade=st?.phase==='trade';if(wasTrade)syncTradeDraft();if(wasTrade&&x.phase!=='trade'){resetTradeDraft();tradeReceipt=null}if(!wasTrade&&x.phase==='trade')resetTradeDraft();st=x;render(x.phase==='trade')});
+s.on('roomReset',d=>{resetTradeDraft();tradeReceipt=null;clearActionFlow();noticeKind='ok';notice=d?.message||'선생님이 게임을 처음 상태로 초기화했어요.';app.innerHTML=`<section class=card><h1>♻️ 게임을 다시 시작해요</h1><p>${notice}</p><p class=muted>모둠과 나라 배정은 그대로 유지됩니다.</p></section>`});
+s.on('state',x=>{
+ const prev=st,wasTrade=prev?.phase==='trade';if(wasTrade)syncTradeDraft();
+ if(wasTrade&&x.phase!=='trade'){resetTradeDraft();tradeReceipt=null}
+ if(!wasTrade&&x.phase==='trade')resetTradeDraft();
+ st=x;render(x.phase==='trade');
+ if(!prev)return;
+ const t=x.teams.find(z=>z.id===me),n=t?.nation&&ND[t.nation];if(!t||!n)return;
+ if(prev.phase!==x.phase&&x.phase==='trade'&&t.lastProduction){beginActionFlow('produce',{...t.lastProduction,item:t.lastProduction.item||n[1]},950);return}
+ if(prev.phase==='trade'&&x.phase==='results'&&t.last){beginActionFlow('consume',t.last,950);return}
+ if(x.round>prev.round&&(x.phase==='ready'||x.phase==='buildIntro')){const productionBonus=(t.buildings||[]).filter(b=>b.type==='production').reduce((a,b)=>a+b.value,0),rewardBonus=(t.buildings||[]).filter(b=>b.type==='reward').reduce((a,b)=>a+b.value,0);showRoundBrief({round:x.round,cash:t.cash,totalAssets:totalAssets(t),inv:{...t.inv},buildings:[...(t.buildings||[])],productionBonus,rewardBonus})}
+});
 
 function pack(p){return [...K.filter(k=>p?.[k]).map(k=>I[k]+NM[k]+' '+p[k]),p?.cash?'💰 '+p.cash:''].filter(Boolean).join(' + ')||'없음'}
 function canGivePack(t,p){return K.every(k=>(p?.[k]||0)<=t.inv[k])&&(p?.cash||0)<=t.cash}
@@ -95,8 +153,10 @@ function render(restore=false){
  else if(st.phase==='final')final(t);
  else app.innerHTML+=`<section class=card><h2>잠시 기다려 주세요</h2><p>선생님이 다음 단계를 시작합니다.</p></section>`;
  if(tradeReceipt&&st.phase==='trade')app.innerHTML+=tradeReceiptModal(t,n);
+ if(actionFlow)app.innerHTML+=actionFlowModal(t,n);
  document.querySelector('#closeTradeReceipt')?.addEventListener('click',()=>{tradeReceipt=null;render(true)});
- if(restore&&st.phase==='trade'&&!tradeReceipt)restoreTradeUi()
+ document.querySelector('.close-action-flow')?.addEventListener('click',()=>{clearActionFlow();render(st.phase==='trade')});
+ if(restore&&st.phase==='trade'&&!tradeReceipt&&!actionFlow)restoreTradeUi()
 }
 
 function trade(t){
@@ -121,6 +181,6 @@ function trade(t){
 
 function build(t){
  app.innerHTML+=`<section class=card><div class=row><h2>🏗️ 시설 건설</h2><div class=muted>💰 자본 ${t.cash} · 🏗️ 시설 ${facilityValue(t)} · 🌟 총자산 ${totalAssets(t)}</div></div><div class=grid>${st.facilities.map(f=>{const built=t.buildings.some(x=>x.id===f.id);return `<div class="card facility-card ${built?'built':''}"><div class=facility-title><span class=facility-icon>${FI[f.id]||'🏗️'}</span><b>${f.name}</b></div><p>💰 비용 <b>${f.cost}</b></p><p>${f.type==='production'?'🏭 생산량':'🎁 소비 보상'} <b>+${f.value}</b></p><button class=bld data-id="${f.id}" ${t.cash<f.cost||built?'disabled':''}>${built?'✅ 건설 완료':'건설'}</button></div>`}).join('')}</div></section>`;
- document.querySelectorAll('.bld').forEach(b=>b.onclick=()=>s.emit('build',b.dataset.id))
+ document.querySelectorAll('.bld').forEach(b=>b.onclick=()=>{const f=st.facilities.find(x=>x.id===b.dataset.id);if(!f)return;pendingBuild=f.id;beginActionFlow('build',{...f},1200);s.emit('build',b.dataset.id)})
 }
 function final(t){let fv=facilityValue(t);app.innerHTML+=`<section class=card><h2>🏁 우리나라 최종 결과</h2><div class=asset-grid><div class=stat-card><span>💰 남은 자본</span><b>${t.cash}</b></div><div class=stat-card><span>🏗️ 시설 자산</span><b>${fv}</b></div><div class="stat-card accent"><span>🌟 국가 총자산</span><b>${t.cash+fv}</b></div></div><div class=buildings-box><b>건설한 시설</b><div class=facility-list>${buildingBadges(t)}</div></div><p>🤝 거래 ${t.stats.trades}회 · ✅ 완전충족 ${t.stats.full}회 · ♻️ 폐기 ${t.stats.waste}개</p></section>`}

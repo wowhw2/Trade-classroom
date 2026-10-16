@@ -29,6 +29,10 @@ tests=[
 ("teacher full game reset","resetRoomForReplay" in server and "d.type==='resetGame'" in server and "roomReset" in student and "게임 초기화" in teacher),
 ("student automatic resume","resumeExisting" in student and "s.on('connect',resumeExisting)" in student and "localStorage.getItem('trade_'+room)" in student),
 ("teacher automatic resume","joinTeacher" in teacher and "s.on('connect',()=>joinTeacher())" in teacher),
+("production progress and receipt","생산 중입니다" in student and "생산 완료!" in student and "lastProduction={round" in server),
+("consumption progress and receipt","소비 중입니다" in student and "소비가 끝났어요!" in student and "사용한 물건" in student),
+("construction progress and receipt","건설 중입니다" in student and "buildComplete" in server and "건설되었습니다" in student),
+("next round briefing","ROUND ${p.round} 준비" in student and "현재 보유 자원" in student and "건설 현황" in student),
 ]
 bad=[n for n,ok in tests if not ok]
 for n,ok in tests: print(("PASS" if ok else "FAIL"),n)
