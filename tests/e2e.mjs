@@ -1,6 +1,8 @@
 import { io } from 'socket.io-client';
+import { readFileSync } from 'node:fs';
 
 const BASE=(process.env.BASE_URL||'http://127.0.0.1:3000').replace(/\/$/,'');
+const EXPECTED_VERSION=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).version;
 const TIMEOUT=8000;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function once(socket,event,pred=()=>true,timeout=TIMEOUT){return new Promise((resolve,reject)=>{const t=setTimeout(()=>{socket.off(event,h);reject(new Error(`timeout: ${event}`))},timeout);function h(v){if(!pred(v))return;clearTimeout(t);socket.off(event,h);resolve(v)}socket.on(event,h)})}
@@ -12,7 +14,7 @@ function team(st,id){return st.teams.find(t=>t.id===id)}
 const sockets=[]; let pass=0;
 async function test(name,fn){try{await fn();console.log(`PASS ${name}`);pass++}catch(e){console.error(`FAIL ${name}: ${e.message}`);throw e}}
 try{
-  await test('health/version',async()=>{const r=await fetch(`${BASE}/health`);assert(r.ok,'health HTTP 실패');const j=await r.json();assert(j.ok,'health ok=false');assert(/^0\.6\./.test(j.version||''),`예상 버전 아님: ${j.version}`)});
+  await test('health/version',async()=>{const r=await fetch(`${BASE}/health`);assert(r.ok,'health HTTP 실패');const j=await r.json();assert(j.ok,'health ok=false');assert(j.version===EXPECTED_VERSION,`버전 불일치: health=${j.version}, package=${EXPECTED_VERSION}`)});
   const meta=await (await fetch(`${BASE}/api/new-room`)).json();
   assert(meta.code&&meta.token,'방 생성 응답 불완전');
   const teacher=client(); sockets.push(teacher); await once(teacher,'connect');
